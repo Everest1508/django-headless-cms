@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Headless CMS{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: #ffffff;
+            border-right: 1px solid #e1e8ed;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        .sidebar-header {
+            padding: 24px 20px;
+            border-bottom: 1px solid #e1e8ed;
+        }
+        .sidebar-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sidebar-header h1 i {
+            color: #0066cc;
+        }
+        .sidebar-nav {
+            padding: 16px 0;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #5a6c7d;
+            text-decoration: none;
+            transition: all 0.2s;
+            gap: 12px;
+        }
+        .nav-item:hover {
+            background: #f5f7fa;
+            color: #0066cc;
+        }
+        .nav-item.active {
+            background: #e6f2ff;
+            color: #0066cc;
+            border-left: 3px solid #0066cc;
+        }
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+        .sidebar-footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            padding: 20px;
+            border-top: 1px solid #e1e8ed;
+            background: #ffffff;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #0066cc;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+        .user-details {
+            flex: 1;
+        }
+        .user-name {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+        .user-email {
+            font-size: 12px;
+            color: #8b9dc3;
+        }
+        .logout-btn {
+            width: 100%;
+            padding: 10px;
+            background: #f5f7fa;
+            border: 1px solid #e1e8ed;
+            border-radius: 6px;
+            color: #5a6c7d;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .logout-btn:hover {
+            background: #e1e8ed;
+            color: #2c3e50;
+        }
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            min-height: 100vh;
+        }
+        .top-bar {
+            background: #ffffff;
+            border-bottom: 1px solid #e1e8ed;
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .page-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .top-actions {
+            display: flex;
+            gap: 12px;
+        }
+        .content-area {
+            padding: 32px;
+        }
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        .btn-primary {
+            background: #0066cc;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #0052a3;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+        }
+        .btn-secondary {
+            background: #f5f7fa;
+            color: #5a6c7d;
+            border: 1px solid #e1e8ed;
+        }
+        .btn-secondary:hover {
+            background: #e1e8ed;
+        }
+        /* Cards */
+        .card {
+            background: #ffffff;
+            border-radius: 8px;
+            border: 1px solid #e1e8ed;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        /* Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        .grid-card {
+            background: #ffffff;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            padding: 24px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .grid-card:hover {
+            border-color: #0066cc;
+            box-shadow: 0 4px 12px rgba(0, 102, 204, 0.1);
+            transform: translateY(-2px);
+        }
+        .grid-card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 12px;
+        }
+        .grid-card-meta {
+            font-size: 13px;
+            color: #8b9dc3;
+            margin-bottom: 16px;
+        }
+        .grid-card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-primary {
+            background: #e6f2ff;
+            color: #0066cc;
+        }
+        .badge-success {
+            background: #e6f7e6;
+            color: #28a745;
+        }
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            background: #ffffff;
+            border-radius: 8px;
+            border: 1px solid #e1e8ed;
+        }
+        .empty-state-icon {
+            font-size: 64px;
+            color: #cbd5e0;
+            margin-bottom: 20px;
+        }
+        .empty-state h2 {
+            font-size: 20px;
+            color: #2c3e50;
+            margin-bottom: 12px;
+        }
+        .empty-state p {
+            color: #8b9dc3;
+            margin-bottom: 24px;
+        }
+        /* Alert */
+        .alert {
+            padding: 16px 20px;
+            border-radius: 6px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .alert-warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            color: #856404;
+        }
+        .alert-info {
+            background: #e6f2ff;
+            border-left: 4px solid #0066cc;
+            color: #004085;
+        }
+        /* Auth Pages */
+        .auth-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #f5f7fa;
+        }
+        .auth-card {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+        }
+        .auth-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .auth-header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        .auth-header p {
+            color: #8b9dc3;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e1e8ed;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #0066cc;
+            box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+        }
+        .auth-link {
+            text-align: center;
+            margin-top: 24px;
+            color: #8b9dc3;
+            font-size: 14px;
+        }
+        .auth-link a {
+            color: #0066cc;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .auth-link a:hover {
+            text-decoration: underline;
+        }
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e1e8ed;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #8b9dc3;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .modal-close:hover {
+            background: #f5f7fa;
+            color: #2c3e50;
+        }
+        .modal-body {
+            padding: 24px;
+        }
+        .modal-message {
+            color: #5a6c7d;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #e1e8ed;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        .modal-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+        .modal-icon.info {
+            background: #e6f2ff;
+            color: #0066cc;
+        }
+        .modal-icon.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .modal-icon.success {
+            background: #e6f7e6;
+            color: #28a745;
+        }
+        .modal-icon.error {
+            background: #f8d7da;
+            color: #dc3545;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Modal -->
+    <div id="modalOverlay" class="modal-overlay" onclick="if(event.target === this) closeModal()">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitleText">Modal Title</h3>
+                <button class="modal-close" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="modalIcon" class="modal-icon"></div>
+                <div class="modal-message" id="modalMessage">Modal message</div>
+            </div>
+            <div class="modal-footer" id="modalFooter">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" id="modalConfirmBtn" onclick="modalConfirm()">Confirm</button>
+            </div>
+        </div>
+    </div>
+    {% if user.is_authenticated %}
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1><i class="fas fa-cube"></i> Headless CMS</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="{% url 'home' %}" class="nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{% url 'stack_list' %}" class="nav-item {% if request.resolver_match.url_name == 'stack_list' or request.resolver_match.url_name == 'stack_detail' or request.resolver_match.url_name == 'stack_create' or request.resolver_match.url_name == 'stack_edit' %}active{% endif %}">
+                    <i class="fas fa-layer-group"></i>
+                    <span>Stacks</span>
+                </a>
+                <a href="{% url 'table_list' %}" class="nav-item {% if request.resolver_match.url_name == 'table_list' or request.resolver_match.url_name == 'table_detail' or request.resolver_match.url_name == 'table_create' or request.resolver_match.url_name == 'table_edit' %}active{% endif %}">
+                    <i class="fas fa-table"></i>
+                    <span>Content Types</span>
+                </a>
+                <a href="{% url 'api_explorer' %}" class="nav-item {% if request.resolver_match.url_name == 'api_explorer' %}active{% endif %}">
+                    <i class="fas fa-code"></i>
+                    <span>API Explorer</span>
+                </a>
+                <a href="{% url 'api_tokens' %}" class="nav-item {% if request.resolver_match.url_name == 'api_tokens' %}active{% endif %}">
+                    <i class="fas fa-key"></i>
+                    <span>API Tokens</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">{{ user.username|first|upper }}</div>
+                    <div class="user-details">
+                        <div class="user-name">{{ user.username }}</div>
+                        <div class="user-email">{{ user.email|default:"No email" }}</div>
+                    </div>
+                </div>
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+        <main class="main-content">
+            <div class="top-bar">
+                <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+                <div class="top-actions">
+                    {% block top_actions %}{% endblock %}
+                </div>
+            </div>
+            <div class="content-area">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    {% else %}
+        {% block auth_content %}{% endblock %}
+    {% endif %}
+    <script>
+        // Modal functions
+        let modalCallback = null;
+        
+        function showModal(title, message, type = 'info', showCancel = true, confirmText = 'Confirm', cancelText = 'Cancel') {
+            const overlay = document.getElementById('modalOverlay');
+            const titleEl = document.getElementById('modalTitleText');
+            const messageEl = document.getElementById('modalMessage');
+            const iconEl = document.getElementById('modalIcon');
+            const footerEl = document.getElementById('modalFooter');
+            const confirmBtn = document.getElementById('modalConfirmBtn');
+            
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            
+            // Set icon based on type
+            iconEl.className = 'modal-icon ' + type;
+            const icons = {
+                'info': '<i class="fas fa-info-circle"></i>',
+                'warning': '<i class="fas fa-exclamation-triangle"></i>',
+                'success': '<i class="fas fa-check-circle"></i>',
+                'error': '<i class="fas fa-times-circle"></i>'
+            };
+            iconEl.innerHTML = icons[type] || icons.info;
+            
+            // Configure footer
+            if (showCancel) {
+                footerEl.innerHTML = `
+                    <button class="btn btn-secondary" onclick="closeModal()">${cancelText}</button>
+                    <button class="btn btn-primary" id="modalConfirmBtn" onclick="modalConfirm()">${confirmText}</button>
+                `;
+            } else {
+                footerEl.innerHTML = `
+                    <button class="btn btn-primary" onclick="closeModal()">${confirmText}</button>
+                `;
+            }
+            
+            overlay.classList.add('active');
+        }
+        
+        function showConfirm(title, message, callback) {
+            modalCallback = callback;
+            showModal(title, message, 'warning', true, 'Continue', 'Cancel');
+        }
+        
+        function showAlert(title, message, type = 'info') {
+            showModal(title, message, type, false, 'OK');
+        }
+        
+        function modalConfirm() {
+            if (modalCallback) {
+                modalCallback();
+                modalCallback = null;
+            }
+            closeModal();
+        }
+        
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+            modalCallback = null;
+        }
+        
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+

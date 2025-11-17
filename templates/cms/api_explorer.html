@@ -1,0 +1,845 @@
+{% extends 'cms/base.html' %}
+{% load cms_tags %}
+
+{% block title %}API Explorer - Headless CMS{% endblock %}
+{% block page_title %}API Explorer{% endblock %}
+
+{% block top_actions %}
+    <a href="{% url 'table_list' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        Back to Content Types
+    </a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .api-section {
+        margin-bottom: 32px;
+    }
+    .api-endpoint {
+        background: #ffffff;
+        border: 1px solid #e1e8ed;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 16px;
+        transition: all 0.2s;
+    }
+    .api-endpoint:hover {
+        border-color: #0066cc;
+        box-shadow: 0 2px 8px rgba(0, 102, 204, 0.1);
+    }
+    .endpoint-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .method-badge {
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        min-width: 60px;
+        text-align: center;
+    }
+    .method-get {
+        background: #e6f2ff;
+        color: #0066cc;
+    }
+    .method-post {
+        background: #e6f7e6;
+        color: #28a745;
+    }
+    .method-put {
+        background: #fff3cd;
+        color: #856404;
+    }
+    .method-patch {
+        background: #fff3cd;
+        color: #856404;
+    }
+    .method-delete {
+        background: #f8d7da;
+        color: #dc3545;
+    }
+    .endpoint-url {
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        color: #2c3e50;
+        flex: 1;
+    }
+    .endpoint-description {
+        color: #5a6c7d;
+        font-size: 14px;
+        margin-bottom: 12px;
+    }
+    .endpoint-actions {
+        display: flex;
+        gap: 8px;
+    }
+    .code-block {
+        background: #f5f7fa;
+        border: 1px solid #e1e8ed;
+        border-radius: 6px;
+        padding: 16px;
+        margin-top: 12px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        overflow-x: auto;
+    }
+    .code-block code {
+        color: #2c3e50;
+    }
+    .copy-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+        background: #f5f7fa;
+        border: 1px solid #e1e8ed;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+        .copy-btn:hover {
+            background: #e1e8ed;
+        }
+        .curl-example {
+            background: #2c3e50;
+            color: #e1e8ed;
+            border-radius: 6px;
+            padding: 16px;
+            margin-top: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            position: relative;
+        }
+        .curl-example code {
+            color: #e1e8ed;
+            white-space: pre;
+        }
+        .curl-toggle {
+            background: #1a1f2e;
+            color: #8b9dc3;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 8px;
+            transition: all 0.2s;
+        }
+        .curl-toggle:hover {
+            background: #252b3a;
+            color: #e1e8ed;
+        }
+    .tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        border-bottom: 2px solid #e1e8ed;
+    }
+    .tab {
+        padding: 12px 20px;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        color: #8b9dc3;
+        transition: all 0.2s;
+        margin-bottom: -2px;
+    }
+    .tab.active {
+        color: #0066cc;
+        border-bottom-color: #0066cc;
+    }
+    .tab-content {
+        display: none;
+    }
+    .tab-content.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">REST API Documentation</h2>
+        </div>
+        <p style="color: #5a6c7d; margin-bottom: 24px;">
+            Explore and test your API endpoints. All endpoints require authentication.
+        </p>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('general')">General Endpoints</button>
+            <button class="tab" onclick="switchTab('content')">Content Type Endpoints</button>
+        </div>
+
+        <!-- General Endpoints Tab -->
+        <div id="general" class="tab-content active">
+            <div class="api-section">
+                <h3 style="font-size: 18px; font-weight: 600; color: #2c3e50; margin-bottom: 16px;">Content Type Management</h3>
+                
+                <div class="api-endpoint">
+                    <div class="endpoint-header">
+                        <span class="method-badge method-get">GET</span>
+                        <span class="endpoint-url">{{ base_url }}/api/tables/</span>
+                    </div>
+                    <div class="endpoint-description">List all content types for the authenticated user</div>
+                    <div class="endpoint-actions">
+                        <button class="copy-btn" onclick="copyToClipboard('{{ base_url }}/api/tables/', this)">
+                            <i class="fas fa-copy"></i> Copy URL
+                        </button>
+                        <button class="curl-toggle" onclick="toggleCurl(this, 'curl-get-tables')">
+                            <i class="fas fa-terminal"></i> Show cURL
+                        </button>
+                    </div>
+                    <div id="curl-get-tables" class="curl-example" style="display: none;">
+                        <div style="margin-bottom: 12px;">
+                            <strong style="color: #e1e8ed; display: block; margin-bottom: 4px;">With API Token:</strong>
+                            <code>curl -X GET "{{ base_url }}/api/tables/" \
+  -H "Authorization: Token YOUR_TOKEN_HERE"</code>
+                            <button class="copy-btn" onclick="copyToClipboard('curl -X GET \"{{ base_url }}/api/tables/\" -H \"Authorization: Token YOUR_TOKEN_HERE\"', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                                <i class="fas fa-copy"></i> Copy cURL
+                            </button>
+                        </div>
+                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #3a4555;">
+                            <strong style="color: #e1e8ed; display: block; margin-bottom: 4px;">With Session:</strong>
+                            <code>curl -X GET "{{ base_url }}/api/tables/" \
+  -H "Cookie: sessionid=YOUR_SESSION_ID"</code>
+                            <button class="copy-btn" onclick="copyToClipboard('curl -X GET \"{{ base_url }}/api/tables/\" -H \"Cookie: sessionid=YOUR_SESSION_ID\"', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                                <i class="fas fa-copy"></i> Copy cURL
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="api-endpoint">
+                    <div class="endpoint-header">
+                        <span class="method-badge method-post">POST</span>
+                        <span class="endpoint-url">{{ base_url }}/api/tables/</span>
+                    </div>
+                    <div class="endpoint-description">Create a new content type</div>
+                    <div class="code-block">
+                        <code>{
+  "name": "products",
+  "display_name": "Products",
+  "description": "Product catalog",
+  "fields": [
+    {
+      "name": "title",
+      "display_name": "Title",
+      "field_type": "CharField",
+      "required": true,
+      "max_length": 255
+    }
+  ]
+}</code>
+                    </div>
+                    <div class="endpoint-actions">
+                        <button class="copy-btn" onclick="copyToClipboard('{{ base_url }}/api/tables/', this)">
+                            <i class="fas fa-copy"></i> Copy URL
+                        </button>
+                        <button class="curl-toggle" onclick="toggleCurl(this, 'curl-post-tables')">
+                            <i class="fas fa-terminal"></i> Show cURL
+                        </button>
+                    </div>
+                    <div id="curl-post-tables" class="curl-example" style="display: none;">
+                        <code>curl -X POST "{{ base_url }}/api/tables/" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: sessionid=YOUR_SESSION_ID" \
+  -d '{
+    "name": "products",
+    "display_name": "Products",
+    "description": "Product catalog",
+    "fields": [
+      {
+        "name": "title",
+        "display_name": "Title",
+        "field_type": "CharField",
+        "required": true,
+        "max_length": 255
+      }
+    ]
+  }'</code>
+                            <button class="copy-btn" onclick="copyToClipboard('curl -X POST \"{{ base_url }}/api/tables/\" -H \"Content-Type: application/json\" -H \"Cookie: sessionid=YOUR_SESSION_ID\" -d \'{\"name\": \"products\", \"display_name\": \"Products\", \"description\": \"Product catalog\", \"fields\": [{\"name\": \"title\", \"display_name\": \"Title\", \"field_type\": \"CharField\", \"required\": true, \"max_length\": 255}]}\'', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                                <i class="fas fa-copy"></i> Copy cURL
+                            </button>
+                    </div>
+                </div>
+
+                <div class="api-endpoint">
+                    <div class="endpoint-header">
+                        <span class="method-badge method-get">GET</span>
+                        <span class="endpoint-url">{{ base_url }}/api/tables/{id}/</span>
+                    </div>
+                    <div class="endpoint-description">Get details of a specific content type</div>
+                    <div class="endpoint-actions">
+                        <button class="copy-btn" onclick="copyToClipboard('{{ base_url }}/api/tables/{id}/')">
+                            <i class="fas fa-copy"></i> Copy URL
+                        </button>
+                        <button class="curl-toggle" onclick="toggleCurl(this, 'curl-get-table')">
+                            <i class="fas fa-terminal"></i> Show cURL
+                        </button>
+                    </div>
+                    <div id="curl-get-table" class="curl-example" style="display: none;">
+                        <code>curl -X GET "{{ base_url }}/api/tables/1/" \
+  -H "Cookie: sessionid=YOUR_SESSION_ID"</code>
+                        <button class="copy-btn" onclick="copyToClipboard('curl -X GET \"{{ base_url }}/api/tables/1/\" -H \"Cookie: sessionid=YOUR_SESSION_ID\"', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                                <i class="fas fa-copy"></i> Copy cURL
+                            </button>
+                    </div>
+                </div>
+
+                <div class="api-endpoint">
+                    <div class="endpoint-header">
+                        <span class="method-badge method-put">PUT</span>
+                        <span class="endpoint-url">{{ base_url }}/api/tables/{id}/</span>
+                    </div>
+                    <div class="endpoint-description">Update a content type (full update)</div>
+                    <div class="endpoint-actions">
+                        <button class="copy-btn" onclick="copyToClipboard('{{ base_url }}/api/tables/{id}/')">
+                            <i class="fas fa-copy"></i> Copy URL
+                        </button>
+                        <button class="curl-toggle" onclick="toggleCurl(this, 'curl-put-table')">
+                            <i class="fas fa-terminal"></i> Show cURL
+                        </button>
+                    </div>
+                    <div id="curl-put-table" class="curl-example" style="display: none;">
+                        <code>curl -X PUT "{{ base_url }}/api/tables/1/" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: sessionid=YOUR_SESSION_ID" \
+  -d '{
+    "name": "products",
+    "display_name": "Products Updated",
+    "description": "Updated description"
+  }'</code>
+                        <button class="copy-btn" onclick="copyToClipboard('curl -X PUT \"{{ base_url }}/api/tables/1/\" -H \"Content-Type: application/json\" -H \"Cookie: sessionid=YOUR_SESSION_ID\" -d \'{\"name\": \"products\", \"display_name\": \"Products Updated\", \"description\": \"Updated description\"}\'', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                                <i class="fas fa-copy"></i> Copy cURL
+                            </button>
+                    </div>
+                </div>
+
+                <div class="api-endpoint">
+                    <div class="endpoint-header">
+                        <span class="method-badge method-patch">PATCH</span>
+                        <span class="endpoint-url">{{ base_url }}/api/tables/{id}/</span>
+                    </div>
+                    <div class="endpoint-description">Partially update a content type</div>
+                    <div class="endpoint-actions">
+                        <button class="copy-btn" onclick="copyToClipboard('{{ base_url }}/api/tables/{id}/')">
+                            <i class="fas fa-copy"></i> Copy URL
+                        </button>
+                        <button class="curl-toggle" onclick="toggleCurl(this, 'curl-patch-table')">
+                            <i class="fas fa-terminal"></i> Show cURL
+                        </button>
+                    </div>
+                    <div id="curl-patch-table" class="curl-example" style="display: none;">
+                        <code>curl -X PATCH "{{ base_url }}/api/tables/1/" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: sessionid=YOUR_SESSION_ID" \
+  -d '{
+    "display_name": "Products Updated"
+  }'</code>
+                        <button class="copy-btn" onclick="copyToClipboard('curl -X PATCH \"{{ base_url }}/api/tables/1/\" -H \"Content-Type: application/json\" -H \"Cookie: sessionid=YOUR_SESSION_ID\" -d \'{\"display_name\": \"Products Updated\"}\'', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                                <i class="fas fa-copy"></i> Copy cURL
+                            </button>
+                    </div>
+                </div>
+
+                <div class="api-endpoint">
+                    <div class="endpoint-header">
+                        <span class="method-badge method-delete">DELETE</span>
+                        <span class="endpoint-url">{{ base_url }}/api/tables/{id}/</span>
+                    </div>
+                    <div class="endpoint-description">Delete a content type</div>
+                    <div class="endpoint-actions">
+                        <button class="copy-btn" onclick="copyToClipboard('{{ base_url }}/api/tables/{id}/')">
+                            <i class="fas fa-copy"></i> Copy URL
+                        </button>
+                        <button class="curl-toggle" onclick="toggleCurl(this, 'curl-delete-table')">
+                            <i class="fas fa-terminal"></i> Show cURL
+                        </button>
+                    </div>
+                    <div id="curl-delete-table" class="curl-example" style="display: none;">
+                        <code>curl -X DELETE "{{ base_url }}/api/tables/1/" \
+  -H "Cookie: sessionid=YOUR_SESSION_ID"</code>
+                        <button class="copy-btn" onclick="copyToClipboard('curl -X DELETE \"{{ base_url }}/api/tables/1/\" -H \"Cookie: sessionid=YOUR_SESSION_ID\"', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                                <i class="fas fa-copy"></i> Copy cURL
+                            </button>
+                    </div>
+                </div>
+
+                <div class="api-endpoint">
+                    <div class="endpoint-header">
+                        <span class="method-badge method-post">POST</span>
+                        <span class="endpoint-url">{{ base_url }}/api/tables/{id}/migrate/</span>
+                    </div>
+                    <div class="endpoint-description">Create the database table for a content type</div>
+                    <div class="endpoint-actions">
+                        <button class="copy-btn" onclick="copyToClipboard('{{ base_url }}/api/tables/{id}/migrate/')">
+                            <i class="fas fa-copy"></i> Copy URL
+                        </button>
+                        <button class="curl-toggle" onclick="toggleCurl(this, 'curl-migrate-table')">
+                            <i class="fas fa-terminal"></i> Show cURL
+                        </button>
+                    </div>
+                    <div id="curl-migrate-table" class="curl-example" style="display: none;">
+                        <code>curl -X POST "{{ base_url }}/api/tables/1/migrate/" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: sessionid=YOUR_SESSION_ID"</code>
+                        <button class="copy-btn" onclick="copyToClipboard('curl -X POST \"{{ base_url }}/api/tables/1/migrate/\" -H \"Content-Type: application/json\" -H \"Cookie: sessionid=YOUR_SESSION_ID\"', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                                <i class="fas fa-copy"></i> Copy cURL
+                            </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Type Endpoints Tab -->
+        <div id="content" class="tab-content">
+            {% if tables %}
+            <div class="api-section">
+                <h3 style="font-size: 18px; font-weight: 600; color: #2c3e50; margin-bottom: 16px;">Content Data Endpoints</h3>
+                <p style="color: #5a6c7d; margin-bottom: 24px; font-size: 14px;">
+                    These endpoints allow you to manage the actual content data for each content type.
+                </p>
+
+                {% for table in tables %}
+                <div style="margin-bottom: 32px;">
+                    <h4 style="font-size: 16px; font-weight: 600; color: #2c3e50; margin-bottom: 12px;">
+                        <i class="fas fa-table" style="color: #0066cc; margin-right: 8px;"></i>
+                        {{ table.display_name }} (<code style="font-size: 12px;">{{ table.name }}</code>)
+                    </h4>
+
+                    <div class="api-endpoint">
+                        <div class="endpoint-header">
+                            <span class="method-badge method-get">GET</span>
+                            <span class="endpoint-url">{{ base_url }}/api/tables/{{ table.id }}/data/</span>
+                        </div>
+                        <div class="endpoint-description">List all records for this content type</div>
+                        <div class="endpoint-actions">
+                            <button class="copy-btn" onclick="copyToClipboard('{{ base_url }}/api/tables/{{ table.id }}/data/', this)">
+                                <i class="fas fa-copy"></i> Copy URL
+                            </button>
+                            <button class="curl-toggle" onclick="toggleCurl(this, 'curl-get-data-{{ table.id }}')">
+                                <i class="fas fa-terminal"></i> Show cURL
+                            </button>
+                            <a href="/api/tables/{{ table.id }}/data/" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" target="_blank">
+                                <i class="fas fa-external-link-alt"></i> Open
+                            </a>
+                        </div>
+                        <div id="curl-get-data-{{ table.id }}" class="curl-example" style="display: none;">
+                            <code>curl -X GET "{{ base_url }}/api/tables/{{ table.id }}/data/" \
+  -H "Cookie: sessionid=YOUR_SESSION_ID"</code>
+                            <button class="copy-btn" onclick="copyToClipboard('curl -X GET \"{{ base_url }}/api/tables/{{ table.id }}/data/\" -H \"Cookie: sessionid=YOUR_SESSION_ID\"', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                                <i class="fas fa-copy"></i> Copy cURL
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <div class="endpoint-header">
+                            <span class="method-badge method-post">POST</span>
+                            <span class="endpoint-url">{{ base_url }}/api/tables/{{ table.id }}/data/</span>
+                        </div>
+                        <div class="endpoint-description">Create a new record</div>
+                        <div class="code-block">
+                            <code>POST {{ base_url }}/api/tables/{{ table.id }}/data/
+Content-Type: application/json
+
+{{ table|example_json:"post" }}</code>
+                        </div>
+                        <div class="endpoint-actions">
+                            <button class="copy-btn" onclick="copyToClipboard('{{ base_url }}/api/tables/{{ table.id }}/data/', this)">
+                                <i class="fas fa-copy"></i> Copy URL
+                            </button>
+                            <button class="curl-toggle" onclick="toggleCurl(this, 'curl-post-data-{{ table.id }}')">
+                                <i class="fas fa-terminal"></i> Show cURL
+                            </button>
+                        </div>
+                        <div id="curl-post-data-{{ table.id }}" class="curl-example" style="display: none;">
+                            {% with example_json=table|example_json_curl:"post" %}
+                            <div style="margin-bottom: 12px;">
+                                <strong style="color: #e1e8ed; display: block; margin-bottom: 4px;">With API Token:</strong>
+                                <code>curl -X POST "{{ base_url }}/api/tables/{{ table.id }}/data/" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Token YOUR_TOKEN_HERE" \
+  -d '{{ example_json }}'</code>
+                                <button class="copy-btn" onclick="copyToClipboard('curl -X POST \"{{ base_url }}/api/tables/{{ table.id }}/data/\" -H \"Content-Type: application/json\" -H \"Authorization: Token YOUR_TOKEN_HERE\" -d \'{{ example_json|escapejs }}\'', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                                    <i class="fas fa-copy"></i> Copy cURL
+                                </button>
+                            </div>
+                            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #3a4555;">
+                                <strong style="color: #e1e8ed; display: block; margin-bottom: 4px;">With Session:</strong>
+                                <code>curl -X POST "{{ base_url }}/api/tables/{{ table.id }}/data/" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: sessionid=YOUR_SESSION_ID" \
+  -d '{{ example_json }}'</code>
+                                <button class="copy-btn" onclick="copyToClipboard('curl -X POST \"{{ base_url }}/api/tables/{{ table.id }}/data/\" -H \"Content-Type: application/json\" -H \"Cookie: sessionid=YOUR_SESSION_ID\" -d \'{{ example_json|escapejs }}\'', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                                    <i class="fas fa-copy"></i> Copy cURL
+                                </button>
+                            </div>
+                            {% endwith %}
+                        </div>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <div class="endpoint-header">
+                            <span class="method-badge method-put">PUT</span>
+                            <span class="endpoint-url">{{ base_url }}/api/tables/{{ table.id }}/data/</span>
+                        </div>
+                        <div class="endpoint-description">Update a record (requires 'id' in body)</div>
+                        <div class="code-block">
+                            <code>PUT {{ base_url }}/api/tables/{{ table.id }}/data/
+Content-Type: application/json
+
+{{ table|example_json:"put" }}</code>
+                        </div>
+                        <div class="endpoint-actions">
+                            <button class="copy-btn" onclick="copyToClipboard('{{ base_url }}/api/tables/{{ table.id }}/data/', this)">
+                                <i class="fas fa-copy"></i> Copy URL
+                            </button>
+                            <button class="curl-toggle" onclick="toggleCurl(this, 'curl-put-data-{{ table.id }}')">
+                                <i class="fas fa-terminal"></i> Show cURL
+                            </button>
+                        </div>
+                        <div id="curl-put-data-{{ table.id }}" class="curl-example" style="display: none;">
+                            {% with example_json=table|example_json_curl:"put" %}
+                            <div style="margin-bottom: 12px;">
+                                <strong style="color: #e1e8ed; display: block; margin-bottom: 4px;">With API Token:</strong>
+                                <code>curl -X PUT "{{ base_url }}/api/tables/{{ table.id }}/data/" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Token YOUR_TOKEN_HERE" \
+  -d '{{ example_json }}'</code>
+                                <button class="copy-btn" onclick="copyToClipboard('curl -X PUT \"{{ base_url }}/api/tables/{{ table.id }}/data/\" -H \"Content-Type: application/json\" -H \"Authorization: Token YOUR_TOKEN_HERE\" -d \'{{ example_json|escapejs }}\'', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                                    <i class="fas fa-copy"></i> Copy cURL
+                                </button>
+                            </div>
+                            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #3a4555;">
+                                <strong style="color: #e1e8ed; display: block; margin-bottom: 4px;">With Session:</strong>
+                                <code>curl -X PUT "{{ base_url }}/api/tables/{{ table.id }}/data/" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: sessionid=YOUR_SESSION_ID" \
+  -d '{{ example_json }}'</code>
+                                <button class="copy-btn" onclick="copyToClipboard('curl -X PUT \"{{ base_url }}/api/tables/{{ table.id }}/data/\" -H \"Content-Type: application/json\" -H \"Cookie: sessionid=YOUR_SESSION_ID\" -d \'{{ example_json|escapejs }}\'', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                                    <i class="fas fa-copy"></i> Copy cURL
+                                </button>
+                            </div>
+                            {% endwith %}
+                        </div>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <div class="endpoint-header">
+                            <span class="method-badge method-delete">DELETE</span>
+                            <span class="endpoint-url">{{ base_url }}/api/tables/{{ table.id }}/data/?id={record_id}</span>
+                        </div>
+                        <div class="endpoint-description">Delete a record</div>
+                        <div class="endpoint-actions">
+                            <button class="copy-btn" onclick="copyToClipboard('{{ base_url }}/api/tables/{{ table.id }}/data/?id={record_id}')">
+                                <i class="fas fa-copy"></i> Copy URL
+                            </button>
+                            <button class="curl-toggle" onclick="toggleCurl(this, 'curl-delete-data-{{ table.id }}')">
+                                <i class="fas fa-terminal"></i> Show cURL
+                            </button>
+                        </div>
+                        <div id="curl-delete-data-{{ table.id }}" class="curl-example" style="display: none;">
+                            <code>curl -X DELETE "{{ base_url }}/api/tables/{{ table.id }}/data/?id=1" \
+  -H "Cookie: sessionid=YOUR_SESSION_ID"</code>
+                            <button class="copy-btn" onclick="copyToClipboard('curl -X DELETE \"{{ base_url }}/api/tables/{{ table.id }}/data/?id=1\" -H \"Cookie: sessionid=YOUR_SESSION_ID\"', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                                <i class="fas fa-copy"></i> Copy cURL
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state" style="padding: 40px;">
+                <div class="empty-state-icon">
+                    <i class="fas fa-table"></i>
+                </div>
+                <h2>No Content Types</h2>
+                <p>Create a content type first to see its API endpoints</p>
+                <a href="{% url 'table_create' %}" class="btn btn-primary" style="margin-top: 24px;">
+                    <i class="fas fa-plus"></i>
+                    Create Content Type
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 24px;">
+        <div class="card-header">
+            <h2 class="card-title">Authentication</h2>
+        </div>
+        <div style="color: #5a6c7d;">
+            <p style="margin-bottom: 16px;">All API endpoints require authentication. You can use:</p>
+            <ul style="margin-left: 24px; margin-bottom: 16px;">
+                <li><strong>Session Authentication:</strong> Use your browser session (works automatically when logged in). For cURL, include the session cookie.</li>
+                <li><strong>Basic Authentication:</strong> Send username and password in the Authorization header</li>
+            </ul>
+            <div class="code-block" style="margin-bottom: 16px;">
+                <code>Authorization: Basic base64(username:password)</code>
+            </div>
+            <div style="margin-top: 16px;">
+                <h4 style="font-size: 14px; font-weight: 600; color: #2c3e50; margin-bottom: 8px;">Example with Basic Auth:</h4>
+                <div class="curl-example">
+                    <code>curl -X GET "{{ base_url }}/api/tables/" \
+  -u "username:password"</code>
+                    <button class="copy-btn" onclick="copyToClipboard('curl -X GET \"{{ base_url }}/api/tables/\" -u \"username:password\"', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                        <i class="fas fa-copy"></i> Copy cURL
+                    </button>
+                </div>
+            </div>
+            <div style="margin-top: 16px; padding: 16px; background: #e6f7ff; border-left: 4px solid #0066cc; border-radius: 4px;">
+                <h4 style="font-size: 16px; font-weight: 600; color: #004085; margin-bottom: 12px;">
+                    <i class="fas fa-key" style="margin-right: 8px;"></i>
+                    API Token Authentication (Recommended)
+                </h4>
+                <p style="color: #004085; margin-bottom: 12px; font-size: 14px;">
+                    API tokens are the recommended way to authenticate API requests. 
+                    <a href="{% url 'api_tokens' %}" style="color: #0066cc; text-decoration: underline;">Create and manage your API tokens here</a>.
+                </p>
+                <div style="margin-top: 12px; padding: 12px; background: white; border-radius: 4px;">
+                    <strong style="color: #004085; display: block; margin-bottom: 8px;">Example with Token:</strong>
+                    <div class="curl-example" style="margin-top: 8px;">
+                        <code>curl -X GET "{{ base_url }}/api/tables/" \
+  -H "Authorization: Token YOUR_TOKEN_HERE"</code>
+                        <button class="copy-btn" onclick="copyToClipboard('curl -X GET \"{{ base_url }}/api/tables/\" -H \"Authorization: Token YOUR_TOKEN_HERE\"', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                            <i class="fas fa-copy"></i> Copy cURL
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 16px; padding: 16px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                <h4 style="font-size: 16px; font-weight: 600; color: #856404; margin-bottom: 12px;">
+                    <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
+                    Session Authentication (Alternative)
+                </h4>
+                <p style="color: #856404; margin-bottom: 12px; font-size: 14px;">
+                    You can also use session-based authentication for browser-based requests.
+                </p>
+                <div style="margin-top: 12px;">
+                    <strong style="color: #856404; display: block; margin-bottom: 8px;">Your Session ID:</strong>
+                    <code id="sessionIdDisplay" style="background: rgba(0,0,0,0.1); padding: 8px 12px; border-radius: 4px; font-size: 13px; display: inline-block; word-break: break-all; max-width: 100%;">
+                        Loading...
+                    </code>
+                    <button class="copy-btn" onclick="copyToClipboard(document.getElementById('sessionIdDisplay').textContent, this)" style="margin-left: 8px; padding: 6px 12px; font-size: 12px;">
+                        <i class="fas fa-copy"></i> Copy Session ID
+                    </button>
+                </div>
+                <p style="margin-top: 12px; margin-bottom: 0; color: #856404; font-size: 13px;">
+                    <strong>Note:</strong> The "Copy cURL" buttons automatically replace <code style="background: rgba(0,0,0,0.1); padding: 2px 4px; border-radius: 2px;">YOUR_SESSION_ID</code> with your actual session ID.
+                </p>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Display session ID on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const sessionId = getSessionId();
+        const displayEl = document.getElementById('sessionIdDisplay');
+        if (sessionId) {
+            displayEl.textContent = sessionId;
+            displayEl.style.color = '#004085';
+        } else {
+            displayEl.textContent = 'Not found (you may need to log in)';
+            displayEl.style.color = '#dc3545';
+        }
+    });
+    
+    function switchTab(tabName) {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        
+        // Remove active class from all tabs
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // Show selected tab content
+        document.getElementById(tabName).classList.add('active');
+        
+        // Add active class to clicked tab
+        event.target.classList.add('active');
+    }
+    
+    function toggleCurl(btn, curlId) {
+        const curlDiv = document.getElementById(curlId);
+        if (curlDiv.style.display === 'none') {
+            curlDiv.style.display = 'block';
+            btn.innerHTML = '<i class="fas fa-terminal"></i> Hide cURL';
+        } else {
+            curlDiv.style.display = 'none';
+            btn.innerHTML = '<i class="fas fa-terminal"></i> Show cURL';
+        }
+    }
+
+    // Get session ID from cookies
+    function getSessionId() {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith('sessionid=')) {
+                return cookie.substring('sessionid='.length);
+            }
+        }
+        return null;
+    }
+    
+    // Replace YOUR_SESSION_ID with actual session ID in cURL commands
+    function replaceSessionId(text) {
+        const sessionId = getSessionId();
+        if (sessionId) {
+            return text.replace(/YOUR_SESSION_ID/g, sessionId);
+        }
+        return text;
+    }
+    
+    function copyToClipboard(text, buttonElement) {
+        // Replace session ID if present
+        text = replaceSessionId(text);
+        
+        // Get button element if not provided
+        const btn = buttonElement || (event && event.target ? event.target.closest('button') : null);
+        
+        // Try modern clipboard API first
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                showCopySuccess(btn);
+            }).catch(err => {
+                console.error('Clipboard API failed:', err);
+                // Fallback to older method
+                fallbackCopyToClipboard(text, btn);
+            });
+        } else {
+            // Fallback for older browsers
+            fallbackCopyToClipboard(text, btn);
+        }
+    }
+    
+    function fallbackCopyToClipboard(text, buttonElement) {
+        // Create a temporary textarea element
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                showCopySuccess(buttonElement);
+            } else {
+                throw new Error('execCommand failed');
+            }
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+            // Show manual copy option
+            showManualCopyModal(text);
+        } finally {
+            document.body.removeChild(textArea);
+        }
+    }
+    
+    function showCopySuccess(btn) {
+        if (!btn) return;
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        btn.style.background = '#e6f7e6';
+        btn.style.color = '#28a745';
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.style.background = '';
+            btn.style.color = '';
+        }, 2000);
+    }
+    
+    function showManualCopyModal(text) {
+        const modal = document.createElement('div');
+        modal.id = 'manualCopyModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        const closeModal = function() {
+            const modalEl = document.getElementById('manualCopyModal');
+            if (modalEl) {
+                modalEl.remove();
+            }
+        };
+        
+        modal.innerHTML = `
+            <div style="background: white; border-radius: 8px; padding: 24px; max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #2c3e50;">Copy URL</h3>
+                    <button id="closeModalBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #8b9dc3; padding: 4px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all 0.2s;" onmouseover="this.style.background='#f5f7fa'; this.style.color='#2c3e50';" onmouseout="this.style.background='none'; this.style.color='#8b9dc3';">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <p style="color: #5a6c7d; margin-bottom: 12px;">Please copy the URL manually:</p>
+                <input type="text" id="copyInput" value="${text.replace(/"/g, '&quot;')}" readonly style="width: 100%; padding: 12px; border: 1px solid #e1e8ed; border-radius: 6px; font-family: monospace; font-size: 14px; background: #f5f7fa; box-sizing: border-box;" onclick="this.select();">
+                <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: flex-end;">
+                    <button id="closeModalBtnBottom" class="btn btn-primary" style="padding: 10px 20px;">Close</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Select text automatically
+        const input = modal.querySelector('#copyInput');
+        input.select();
+        input.focus();
+        
+        // Close button handlers
+        const closeBtn = modal.querySelector('#closeModalBtn');
+        const closeBtnBottom = modal.querySelector('#closeModalBtnBottom');
+        
+        closeBtn.addEventListener('click', closeModal);
+        closeBtnBottom.addEventListener('click', closeModal);
+        
+        // Close on outside click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+        
+        // Close on Escape key
+        const escapeHandler = function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', escapeHandler);
+            }
+        };
+        document.addEventListener('keydown', escapeHandler);
+    }
+</script>
+{% endblock %}
+

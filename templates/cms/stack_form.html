@@ -1,0 +1,72 @@
+{% extends 'cms/base.html' %}
+
+{% block title %}{% if object %}Edit Stack{% else %}Create Stack{% endif %} - Headless CMS{% endblock %}
+{% block page_title %}{% if object %}Edit Stack{% else %}Create Stack{% endif %}{% endblock %}
+
+{% block top_actions %}
+    <a href="{% url 'stack_list' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        Back to Stacks
+    </a>
+{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">{% if object %}Edit Stack{% else %}Create New Stack{% endif %}</h2>
+        </div>
+        <div class="card-body">
+            <form method="post" id="stackForm">
+                {% csrf_token %}
+                <div style="margin-bottom: 20px;">
+                    <label for="id_display_name" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">
+                        Display Name <span style="color: #dc3545;">*</span>
+                    </label>
+                    <input type="text" name="display_name" id="id_display_name" 
+                           value="{% if object %}{{ object.display_name }}{% else %}{{ form.display_name.value|default:'' }}{% endif %}" 
+                           required
+                           style="width: 100%; padding: 10px; border: 1px solid #e1e8ed; border-radius: 6px; font-size: 14px;"
+                           placeholder="e.g., My Blog Stack">
+                    <small style="color: #8b9dc3; font-size: 12px; margin-top: 4px; display: block;">
+                        A friendly name for your stack
+                    </small>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label for="id_name" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">
+                        API Name <span style="color: #dc3545;">*</span>
+                    </label>
+                    <input type="text" name="name" id="id_name" 
+                           value="{% if object %}{{ object.name }}{% else %}{{ form.name.value|default:'' }}{% endif %}" 
+                           required
+                           pattern="^[a-zA-Z][a-zA-Z0-9_]*$"
+                           {% if object %}readonly style="width: 100%; padding: 10px; border: 1px solid #e1e8ed; border-radius: 6px; font-size: 14px; font-family: monospace; background: #f5f7fa;"{% else %}style="width: 100%; padding: 10px; border: 1px solid #e1e8ed; border-radius: 6px; font-size: 14px; font-family: monospace;"{% endif %}
+                           placeholder="e.g., my_blog_stack">
+                    <small style="color: #8b9dc3; font-size: 12px; margin-top: 4px; display: block;">
+                        {% if object %}API name cannot be changed after creation{% else %}Must start with a letter and contain only letters, numbers, and underscores{% endif %}
+                    </small>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label for="id_description" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">
+                        Description
+                    </label>
+                    <textarea name="description" id="id_description" rows="4"
+                              style="width: 100%; padding: 10px; border: 1px solid #e1e8ed; border-radius: 6px; font-size: 14px; resize: vertical;"
+                              placeholder="Optional description for this stack">{% if object %}{{ object.description }}{% else %}{{ form.description.value|default:'' }}{% endif %}</textarea>
+                </div>
+                
+                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        {% if object %}Update Stack{% else %}Create Stack{% endif %}
+                    </button>
+                    <a href="{% url 'stack_list' %}" class="btn btn-secondary">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+

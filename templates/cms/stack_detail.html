@@ -1,0 +1,109 @@
+{% extends 'cms/base.html' %}
+
+{% block title %}{{ stack.display_name }} - Headless CMS{% endblock %}
+{% block page_title %}{{ stack.display_name }}{% endblock %}
+
+{% block top_actions %}
+    <a href="{% url 'stack_edit' stack.pk %}" class="btn btn-secondary">
+        <i class="fas fa-edit"></i>
+        Edit Stack
+    </a>
+    <a href="{% url 'table_create' %}?stack={{ stack.pk }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i>
+        Create Content Type
+    </a>
+{% endblock %}
+
+{% block content %}
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <h2 class="card-title">Stack Details</h2>
+        </div>
+        <div class="card-body">
+            <div style="margin-bottom: 16px;">
+                <label style="font-weight: 600; color: #5a6c7d; display: block; margin-bottom: 4px;">Display Name</label>
+                <div style="font-size: 16px; color: #2c3e50;">{{ stack.display_name }}</div>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="font-weight: 600; color: #5a6c7d; display: block; margin-bottom: 4px;">API Name</label>
+                <code style="background: #f5f7fa; padding: 4px 8px; border-radius: 4px; font-size: 14px; color: #0066cc;">{{ stack.name }}</code>
+            </div>
+            {% if stack.description %}
+            <div style="margin-bottom: 16px;">
+                <label style="font-weight: 600; color: #5a6c7d; display: block; margin-bottom: 4px;">Description</label>
+                <div style="color: #2c3e50;">{{ stack.description }}</div>
+            </div>
+            {% endif %}
+            <div style="margin-bottom: 16px;">
+                <label style="font-weight: 600; color: #5a6c7d; display: block; margin-bottom: 4px;">Created</label>
+                <div style="color: #8b9dc3;">{{ stack.created_at|date:"F d, Y g:i A" }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Content Types in this Stack</h2>
+            <span class="badge badge-primary">{{ content_types.count }} Total</span>
+        </div>
+        {% if content_types %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #e1e8ed;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #5a6c7d;">Name</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #5a6c7d;">API Name</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #5a6c7d;">Fields</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #5a6c7d;">Created</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; color: #5a6c7d;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for content_type in content_types %}
+                    <tr style="border-bottom: 1px solid #e1e8ed; transition: background 0.2s;" onmouseover="this.style.background='#f5f7fa'" onmouseout="this.style.background='transparent'">
+                        <td style="padding: 16px 12px;">
+                            <div style="font-weight: 600; color: #2c3e50; margin-bottom: 4px;">{{ content_type.display_name }}</div>
+                            {% if content_type.description %}
+                            <div style="font-size: 13px; color: #8b9dc3;">{{ content_type.description|truncatewords:10 }}</div>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 16px 12px;">
+                            <code style="background: #f5f7fa; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #0066cc;">{{ content_type.name }}</code>
+                        </td>
+                        <td style="padding: 16px 12px;">
+                            <span class="badge badge-primary">{{ content_type.fields.count }} Fields</span>
+                        </td>
+                        <td style="padding: 16px 12px; color: #8b9dc3; font-size: 14px;">
+                            {{ content_type.created_at|date:"M d, Y" }}
+                        </td>
+                        <td style="padding: 16px 12px; text-align: right;">
+                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                <a href="{% url 'table_detail' content_type.pk %}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'table_edit' content_type.pk %}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state" style="padding: 40px;">
+            <div class="empty-state-icon">
+                <i class="fas fa-table"></i>
+            </div>
+            <h2>No Content Types</h2>
+            <p>Create your first content type in this stack</p>
+            <a href="{% url 'table_create' %}?stack={{ stack.pk }}" class="btn btn-primary" style="margin-top: 24px;">
+                <i class="fas fa-plus"></i>
+                Create Content Type
+            </a>
+        </div>
+        {% endif %}
+    </div>
+{% endblock %}
+

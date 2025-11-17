@@ -1,0 +1,16 @@
+include README.md
+include LICENSE
+include requirements.txt
+include pyproject.toml
+include setup.py
+include setup.cfg
+recursive-include templates *
+recursive-include static *
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * *.so
+recursive-exclude * .DS_Store
+recursive-exclude venv *
+recursive-exclude core *
+recursive-exclude *.egg-info *
+

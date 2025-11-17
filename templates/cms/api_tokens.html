@@ -1,0 +1,556 @@
+{% extends 'cms/base.html' %}
+{% load static %}
+
+{% block page_title %}API Tokens{% endblock %}
+
+{% block top_actions %}
+    <button class="btn btn-primary" onclick="createToken()">
+        <i class="fas fa-plus"></i>
+        Create New Token
+    </button>
+{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Your API Tokens</h3>
+        </div>
+        <div class="card-body">
+            <p style="color: #5a6c7d; margin-bottom: 24px;">
+                API tokens allow you to authenticate API requests without using your username and password. 
+                Each token is scoped to your account and can be revoked at any time.
+            </p>
+
+            {% if tokens %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Token</th>
+                        <th>Created</th>
+                        <th>Last Used</th>
+                        <th>Status</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for token in tokens %}
+                    <tr>
+                        <td>{{ token.name }}</td>
+                        <td>
+                            <code style="font-size: 12px; background: #f5f7fa; padding: 4px 8px; border-radius: 4px;">
+                                {{ token.key|truncatechars:40 }}
+                            </code>
+                            <button class="copy-btn" onclick="copyToClipboard('{{ token.key }}', this)" style="margin-left: 8px; padding: 4px 8px; font-size: 11px;">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </td>
+                        <td>{{ token.created_at|date:"M d, Y" }}</td>
+                        <td>{{ token.last_used|date:"M d, Y H:i"|default:"Never" }}</td>
+                        <td>
+                            {% if token.is_active %}
+                                <span style="color: #28a745; font-weight: 600;">Active</span>
+                            {% else %}
+                                <span style="color: #dc3545; font-weight: 600;">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <button class="btn btn-secondary" onclick="toggleToken({{ token.id }}, {{ token.is_active|yesno:"false,true" }})" style="padding: 6px 12px; font-size: 12px;">
+                                <i class="fas fa-{% if token.is_active %}ban{% else %}check{% endif %}"></i>
+                                {% if token.is_active %}Deactivate{% else %}Activate{% endif %}
+                            </button>
+                            <button class="btn btn-danger" onclick="deleteToken({{ token.id }}, '{{ token.name }}')" style="padding: 6px 12px; font-size: 12px; margin-left: 8px;">
+                                <i class="fas fa-trash"></i>
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state" style="padding: 40px;">
+                <div class="empty-state-icon">
+                    <i class="fas fa-key"></i>
+                </div>
+                <h2>No API Tokens</h2>
+                <p>Create your first API token to start making authenticated API requests</p>
+                <button class="btn btn-primary" onclick="createToken()" style="margin-top: 24px;">
+                    <i class="fas fa-plus"></i>
+                    Create API Token
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 24px;">
+        <div class="card-header">
+            <h3 class="card-title">How to Use API Tokens</h3>
+        </div>
+        <div class="card-body">
+            <p style="color: #5a6c7d; margin-bottom: 16px;">
+                Include your API token in the Authorization header of your HTTP requests:
+            </p>
+            <div class="code-block">
+                <code>Authorization: Token YOUR_TOKEN_HERE</code>
+            </div>
+            <div style="margin-top: 16px;">
+                <h4 style="font-size: 14px; font-weight: 600; color: #2c3e50; margin-bottom: 8px;">Example with cURL:</h4>
+                <div class="curl-example">
+                    <code>curl -X GET "{{ base_url }}/api/tables/" \
+  -H "Authorization: Token YOUR_TOKEN_HERE"</code>
+                    <button class="copy-btn" onclick="copyToClipboard('curl -X GET \"{{ base_url }}/api/tables/\" -H \"Authorization: Token YOUR_TOKEN_HERE\"', this)" style="margin-top: 8px; background: #1a1f2e; color: #e1e8ed; border: 1px solid #3a4555;">
+                        <i class="fas fa-copy"></i> Copy cURL
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function copyToClipboard(text, buttonElement) {
+        const btn = buttonElement || (event && event.target ? event.target.closest('button') : null);
+        
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                showCopySuccess(btn);
+            }).catch(err => {
+                console.error('Clipboard API failed:', err);
+                fallbackCopyToClipboard(text, btn);
+            });
+        } else {
+            fallbackCopyToClipboard(text, btn);
+        }
+    }
+    
+    function fallbackCopyToClipboard(text, buttonElement) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                showCopySuccess(buttonElement);
+            } else {
+                throw new Error('execCommand failed');
+            }
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+            // Show manual copy modal if available, otherwise just log
+            if (typeof showManualCopyModal === 'function') {
+                showManualCopyModal(text);
+            }
+        } finally {
+            document.body.removeChild(textArea);
+        }
+    }
+    
+    function showCopySuccess(btn) {
+        if (!btn) return;
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        btn.style.background = '#e6f7e6';
+        btn.style.color = '#28a745';
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.style.background = '';
+            btn.style.color = '';
+        }, 2000);
+    }
+
+    function createToken() {
+        // Create a custom modal for token name input
+        const modal = document.createElement('div');
+        modal.id = 'createTokenModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+
+        const closeModal = function() {
+            const modalEl = document.getElementById('createTokenModal');
+            if (modalEl) {
+                modalEl.remove();
+            }
+        };
+
+        modal.innerHTML = `
+            <div style="background: white; border-radius: 8px; padding: 24px; max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #2c3e50;">Create API Token</h3>
+                    <button id="closeTokenModalBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #8b9dc3; padding: 4px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all 0.2s;" onmouseover="this.style.background='#f5f7fa'; this.style.color='#2c3e50';" onmouseout="this.style.background='none'; this.style.color='#8b9dc3';">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <p style="color: #5a6c7d; margin-bottom: 16px; font-size: 14px;">
+                    Enter a descriptive name for this token (e.g., "Production API", "Development"):
+                </p>
+                <input type="text" id="tokenNameInput" placeholder="Token name" style="width: 100%; padding: 12px; border: 1px solid #e1e8ed; border-radius: 6px; font-size: 14px; box-sizing: border-box; margin-bottom: 20px;" autofocus>
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button id="cancelTokenBtn" class="btn btn-secondary" style="padding: 10px 20px;">Cancel</button>
+                    <button id="createTokenBtn" class="btn btn-primary" style="padding: 10px 20px;">Create Token</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const input = modal.querySelector('#tokenNameInput');
+        const createBtn = modal.querySelector('#createTokenBtn');
+        const cancelBtn = modal.querySelector('#cancelTokenBtn');
+        const closeBtn = modal.querySelector('#closeTokenModalBtn');
+
+        // Close handlers
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Escape key handler
+        const escapeHandler = function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', escapeHandler);
+            }
+        };
+        document.addEventListener('keydown', escapeHandler);
+
+        // Create token handler
+        createBtn.addEventListener('click', function() {
+            const tokenName = input.value.trim();
+            if (!tokenName) {
+                input.style.borderColor = '#dc3545';
+                input.focus();
+                return;
+            }
+
+            createBtn.disabled = true;
+            createBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+
+            const csrftoken = getCookie('csrftoken');
+            fetch('/api/tokens/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                credentials: 'include',
+                body: JSON.stringify({ name: tokenName })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => Promise.reject(err));
+                }
+                return response.json();
+            })
+            .then(data => {
+                closeModal();
+                // Show token in a special modal
+                showTokenCreatedModal(data.key);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const errorMsg = error.detail || error.message || JSON.stringify(error);
+                createBtn.disabled = false;
+                createBtn.innerHTML = 'Create Token';
+                input.style.borderColor = '#dc3545';
+                // Show error in a small notification
+                showErrorNotification('Failed to create token: ' + errorMsg);
+            });
+        });
+
+        // Enter key handler
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                createBtn.click();
+            }
+        });
+
+        input.focus();
+    }
+
+    function showTokenCreatedModal(tokenKey) {
+        const modal = document.createElement('div');
+        modal.id = 'tokenCreatedModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10002;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+
+        const closeModal = function() {
+            const modalEl = document.getElementById('tokenCreatedModal');
+            if (modalEl) {
+                modalEl.remove();
+            }
+            window.location.reload();
+        };
+
+        modal.innerHTML = `
+            <div style="background: white; border-radius: 8px; padding: 24px; max-width: 600px; width: 90%; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #28a745;">
+                        <i class="fas fa-check-circle" style="margin-right: 8px;"></i>
+                        Token Created Successfully
+                    </h3>
+                    <button id="closeCreatedModalBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #8b9dc3; padding: 4px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all 0.2s;" onmouseover="this.style.background='#f5f7fa'; this.style.color='#2c3e50';" onmouseout="this.style.background='none'; this.style.color='#8b9dc3';">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
+                    <strong style="color: #856404; display: block; margin-bottom: 4px;">⚠️ Important:</strong>
+                    <span style="color: #856404; font-size: 14px;">Make sure to copy your token now. You won't be able to see it again!</span>
+                </div>
+                <p style="color: #5a6c7d; margin-bottom: 12px; font-size: 14px; font-weight: 600;">Your API Token:</p>
+                <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+                    <input type="text" id="createdTokenInput" value="${tokenKey}" readonly style="flex: 1; padding: 12px; border: 1px solid #e1e8ed; border-radius: 6px; font-family: monospace; font-size: 13px; background: #f5f7fa; box-sizing: border-box;" onclick="this.select();">
+                    <button id="copyCreatedTokenBtn" class="btn btn-primary" style="padding: 12px 20px;">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button id="closeCreatedModalBtnBottom" class="btn btn-primary" style="padding: 10px 20px;">Done</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const tokenInput = modal.querySelector('#createdTokenInput');
+        const copyBtn = modal.querySelector('#copyCreatedTokenBtn');
+        const closeBtn = modal.querySelector('#closeCreatedModalBtn');
+        const closeBtnBottom = modal.querySelector('#closeCreatedModalBtnBottom');
+
+        // Auto-select token
+        tokenInput.select();
+        tokenInput.focus();
+
+        // Copy handler
+        copyBtn.addEventListener('click', function() {
+            copyToClipboard(tokenKey, copyBtn);
+        });
+
+        // Close handlers
+        closeBtn.addEventListener('click', closeModal);
+        closeBtnBottom.addEventListener('click', closeModal);
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Escape key handler
+        const escapeHandler = function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', escapeHandler);
+            }
+        };
+        document.addEventListener('keydown', escapeHandler);
+    }
+
+    function showSuccessNotification(message) {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 10003;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            animation: slideIn 0.3s ease-out;
+        `;
+        notification.innerHTML = `
+            <i class="fas fa-check-circle" style="font-size: 20px;"></i>
+            <span>${message}</span>
+        `;
+        document.body.appendChild(notification);
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+
+    function showErrorNotification(message) {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #dc3545;
+            color: white;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 10003;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            animation: slideIn 0.3s ease-out;
+        `;
+        notification.innerHTML = `
+            <i class="fas fa-exclamation-circle" style="font-size: 20px;"></i>
+            <span>${message}</span>
+            <button onclick="this.parentElement.remove()" style="background: none; border: none; color: white; cursor: pointer; margin-left: auto; padding: 4px 8px; font-size: 18px; opacity: 0.8;" onmouseover="this.style.opacity='1';" onmouseout="this.style.opacity='0.8';">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        document.body.appendChild(notification);
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, 5000);
+    }
+
+    // Add CSS animations
+    if (!document.getElementById('notificationStyles')) {
+        const style = document.createElement('style');
+        style.id = 'notificationStyles';
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    function toggleToken(tokenId, activate) {
+        const action = activate ? 'activate' : 'deactivate';
+        showConfirm(
+            `${activate ? 'Activate' : 'Deactivate'} Token`,
+            `Are you sure you want to ${action} this token?`,
+            function() {
+                const csrftoken = getCookie('csrftoken');
+                fetch(`/api/tokens/${tokenId}/`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ is_active: activate })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => Promise.reject(err));
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    showSuccessNotification(`Token ${action}d successfully.`);
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const errorMsg = error.detail || error.message || JSON.stringify(error);
+                    showErrorNotification('Failed to ' + action + ' token: ' + errorMsg);
+                });
+            }
+        );
+    }
+
+    function deleteToken(tokenId, tokenName) {
+        showConfirm(
+            'Delete Token',
+            `Are you sure you want to delete the token "${tokenName}"? This action cannot be undone.`,
+            function() {
+                const csrftoken = getCookie('csrftoken');
+                fetch(`/api/tokens/${tokenId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => Promise.reject(err));
+                    }
+                    showSuccessNotification('Token deleted successfully.');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const errorMsg = error.detail || error.message || JSON.stringify(error);
+                    showErrorNotification('Failed to delete token: ' + errorMsg);
+                });
+            }
+        );
+    }
+</script>
+{% endblock %}
+

@@ -1,0 +1,113 @@
+{% extends 'cms/base.html' %}
+
+{% block title %}Content Types - Headless CMS{% endblock %}
+{% block page_title %}Content Types{% endblock %}
+
+{% block top_actions %}
+    <a href="{% url 'table_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i>
+        Create Content Type
+    </a>
+{% endblock %}
+
+{% block content %}
+    {% if stacks %}
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <h2 class="card-title">Stacks</h2>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; padding: 16px;">
+            <a href="{% url 'table_list' %}" 
+               class="badge {% if not current_stack %}badge-primary{% else %}badge-secondary{% endif %}" 
+               style="padding: 8px 16px; text-decoration: none; cursor: pointer;">
+                All Content Types
+            </a>
+            {% for stack in stacks %}
+            <a href="{% url 'table_list' %}?stack={{ stack.pk }}" 
+               class="badge {% if current_stack and current_stack.pk == stack.pk %}badge-primary{% else %}badge-secondary{% endif %}" 
+               style="padding: 8px 16px; text-decoration: none; cursor: pointer;">
+                {{ stack.display_name }} ({{ stack.content_types.count }})
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">{% if current_stack %}{{ current_stack.display_name }} - {% endif %}Content Types</h2>
+            <span class="badge badge-primary">{{ tables.count }} Total</span>
+        </div>
+        {% if tables %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #e1e8ed;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #5a6c7d;">Name</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #5a6c7d;">API Name</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #5a6c7d;">Stack</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #5a6c7d;">Fields</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #5a6c7d;">Created</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; color: #5a6c7d;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for table in tables %}
+                    <tr style="border-bottom: 1px solid #e1e8ed; transition: background 0.2s;" onmouseover="this.style.background='#f5f7fa'" onmouseout="this.style.background='transparent'">
+                        <td style="padding: 16px 12px;">
+                            <div style="font-weight: 600; color: #2c3e50; margin-bottom: 4px;">{{ table.display_name }}</div>
+                            {% if table.description %}
+                            <div style="font-size: 13px; color: #8b9dc3;">{{ table.description|truncatewords:10 }}</div>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 16px 12px;">
+                            <code style="background: #f5f7fa; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #0066cc;">{{ table.name }}</code>
+                        </td>
+                        <td style="padding: 16px 12px;">
+                            {% if table.stack %}
+                            <a href="{% url 'stack_detail' table.stack.pk %}" style="text-decoration: none;">
+                                <span class="badge badge-secondary">{{ table.stack.display_name }}</span>
+                            </a>
+                            {% else %}
+                            <span style="color: #8b9dc3; font-size: 13px;">No Stack</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 16px 12px;">
+                            <span class="badge badge-primary">{{ table.fields.count }} Fields</span>
+                        </td>
+                        <td style="padding: 16px 12px; color: #8b9dc3; font-size: 14px;">
+                            {{ table.created_at|date:"M d, Y" }}
+                        </td>
+                        <td style="padding: 16px 12px; text-align: right;">
+                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                <a href="{% url 'table_detail' table.pk %}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'table_edit' table.pk %}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'api_explorer' %}#content" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">
+                                    <i class="fas fa-code"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state" style="padding: 40px;">
+            <div class="empty-state-icon">
+                <i class="fas fa-table"></i>
+            </div>
+            <h2>No Content Types</h2>
+            <p>Create your first content type to get started</p>
+            <a href="{% url 'table_create' %}" class="btn btn-primary" style="margin-top: 24px;">
+                <i class="fas fa-plus"></i>
+                Create Content Type
+            </a>
+        </div>
+        {% endif %}
+    </div>
+{% endblock %}

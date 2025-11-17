@@ -1,0 +1,224 @@
+{% extends 'cms/base.html' %}
+
+{% block title %}{{ table.display_name }} - Headless CMS{% endblock %}
+{% block page_title %}{{ table.display_name }}{% endblock %}
+
+{% block top_actions %}
+    <a href="{% url 'table_list' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        Back
+    </a>
+    <a href="{% url 'table_edit' table.pk %}" class="btn btn-secondary">
+        <i class="fas fa-edit"></i>
+        Edit
+    </a>
+    <a href="{% url 'api_explorer' %}#content" class="btn btn-secondary">
+        <i class="fas fa-code"></i>
+        View API
+    </a>
+{% endblock %}
+
+{% block content %}
+    {% if not table_exists %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+            <strong>Table Not Created</strong>
+            <p style="margin: 4px 0 0 0;">This content type definition exists, but the database table has not been created yet. Click the button below to create it.</p>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-check-circle"></i>
+        <div>
+            <strong>Table Created</strong>
+            <p style="margin: 4px 0 0 0;">The database table has been created and is ready to use.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Content Type Information</h2>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px;">
+            <div>
+                <div style="font-size: 12px; color: #8b9dc3; margin-bottom: 6px; text-transform: uppercase; font-weight: 600;">Display Name</div>
+                <div style="font-size: 16px; font-weight: 600; color: #2c3e50;">{{ table.display_name }}</div>
+            </div>
+            <div>
+                <div style="font-size: 12px; color: #8b9dc3; margin-bottom: 6px; text-transform: uppercase; font-weight: 600;">API Name</div>
+                <div style="font-size: 16px; color: #2c3e50;">
+                    <code style="background: #f5f7fa; padding: 4px 8px; border-radius: 4px;">{{ table.name }}</code>
+                </div>
+            </div>
+            <div>
+                <div style="font-size: 12px; color: #8b9dc3; margin-bottom: 6px; text-transform: uppercase; font-weight: 600;">Created</div>
+                <div style="font-size: 16px; color: #2c3e50;">{{ table.created_at|date:"F d, Y H:i" }}</div>
+            </div>
+            <div>
+                <div style="font-size: 12px; color: #8b9dc3; margin-bottom: 6px; text-transform: uppercase; font-weight: 600;">Last Updated</div>
+                <div style="font-size: 16px; color: #2c3e50;">{{ table.updated_at|date:"F d, Y H:i" }}</div>
+            </div>
+        </div>
+        {% if table.description %}
+        <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #e1e8ed;">
+            <div style="font-size: 12px; color: #8b9dc3; margin-bottom: 6px; text-transform: uppercase; font-weight: 600;">Description</div>
+            <div style="color: #5a6c7d;">{{ table.description }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Fields ({{ fields.count }})</h2>
+        </div>
+        {% if fields %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #e1e8ed;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #5a6c7d;">Field Name</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #5a6c7d;">Display Name</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #5a6c7d;">Type</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600; color: #5a6c7d;">Required</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #5a6c7d;">Max Length</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for field in fields %}
+                    <tr style="border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 16px 12px;">
+                            <code style="background: #f5f7fa; padding: 4px 8px; border-radius: 4px; font-size: 13px; color: #0066cc;">{{ field.name }}</code>
+                        </td>
+                        <td style="padding: 16px 12px; font-weight: 500; color: #2c3e50;">{{ field.display_name }}</td>
+                        <td style="padding: 16px 12px;">
+                            <span class="badge badge-primary">{{ field.get_field_type_display }}</span>
+                        </td>
+                        <td style="padding: 16px 12px; text-align: center;">
+                            {% if field.required %}
+                            <span class="badge badge-warning">Required</span>
+                            {% else %}
+                            <span style="color: #8b9dc3;">Optional</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 16px 12px; color: #8b9dc3;">
+                            {{ field.max_length|default:"—" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 40px; color: #8b9dc3;">
+            <i class="fas fa-info-circle" style="font-size: 32px; margin-bottom: 12px; opacity: 0.5;"></i>
+            <p>No fields defined for this content type.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">API Endpoints</h2>
+        </div>
+        <div style="display: grid; gap: 16px;">
+            <div style="padding: 16px; background: #f5f7fa; border-radius: 6px; border-left: 4px solid #0066cc;">
+                <div style="font-size: 12px; color: #8b9dc3; margin-bottom: 6px; text-transform: uppercase; font-weight: 600;">List/Create Data</div>
+                <code style="font-size: 14px; color: #0066cc;">GET/POST /api/tables/{{ table.id }}/data/</code>
+            </div>
+            <div style="padding: 16px; background: #f5f7fa; border-radius: 6px; border-left: 4px solid #0066cc;">
+                <div style="font-size: 12px; color: #8b9dc3; margin-bottom: 6px; text-transform: uppercase; font-weight: 600;">Update/Delete Data</div>
+                <code style="font-size: 14px; color: #0066cc;">PUT/PATCH/DELETE /api/tables/{{ table.id }}/data/?id=&lt;record_id&gt;</code>
+            </div>
+            <div style="padding: 16px; background: #f5f7fa; border-radius: 6px; border-left: 4px solid #0066cc;">
+                <div style="font-size: 12px; color: #8b9dc3; margin-bottom: 6px; text-transform: uppercase; font-weight: 600;">Create Database Table</div>
+                <code style="font-size: 14px; color: #0066cc;">POST /api/tables/{{ table.id }}/migrate/</code>
+            </div>
+        </div>
+        <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #e1e8ed;">
+            {% if not table_exists %}
+            <button class="btn btn-primary" onclick="migrateTable()">
+                <i class="fas fa-database"></i>
+                Create Database Table
+            </button>
+            {% else %}
+            <button class="btn btn-secondary" disabled>
+                <i class="fas fa-check"></i>
+                Table Already Created
+            </button>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function migrateTable() {
+        showConfirm(
+            'Create Database Table',
+            'This will create the database table for "{{ table.display_name }}". Continue?',
+            function() {
+                const csrftoken = getCookie('csrftoken');
+                fetch(`/api/tables/{{ table.id }}/migrate/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => Promise.reject(err));
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.message) {
+                        showAlert(
+                            'Success',
+                            data.message + '\n\nAPI Endpoint: ' + data.api_endpoint,
+                            'success'
+                        );
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    } else {
+                        showAlert(
+                            'Error',
+                            data.error || 'Failed to create table',
+                            'error'
+                        );
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const errorMsg = error.error || error.detail || error.message || 'Error creating table. Please try again.';
+                    showAlert(
+                        'Error',
+                        errorMsg,
+                        'error'
+                    );
+                });
+            }
+        );
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,494 @@
+{% extends 'cms/base.html' %}
+
+{% block title %}{% if is_edit %}Edit Content Type{% else %}Create Content Type{% endif %} - Headless CMS{% endblock %}
+{% block page_title %}{% if is_edit %}Edit Content Type{% else %}Create Content Type{% endif %}{% endblock %}
+
+{% block top_actions %}
+    <a href="{% url 'table_list' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        Cancel
+    </a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        margin-bottom: 32px;
+    }
+    .section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #e1e8ed;
+    }
+    .field-item {
+        background: #f5f7fa;
+        border: 1px solid #e1e8ed;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .field-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    .field-header h3 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    .btn-remove {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s;
+    }
+    .btn-remove:hover {
+        background: #c82333;
+    }
+    .field-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+    .field-row.full {
+        grid-template-columns: 1fr;
+    }
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .checkbox-group input[type="checkbox"] {
+        width: auto;
+    }
+    .btn-add-field {
+        width: 100%;
+        margin-top: 20px;
+        background: #28a745;
+    }
+    .btn-add-field:hover {
+        background: #218838;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <form method="post" id="tableForm">
+            {% csrf_token %}
+            
+            <div class="form-section">
+                <h2 class="section-title">Content Type Details</h2>
+                <div class="form-group">
+                    <label class="form-label" for="id_stack">Stack</label>
+                    <select name="stack" id="id_stack" class="form-input">
+                        <option value="">No Stack</option>
+                        {% for stack_option in stacks %}
+                        <option value="{{ stack_option.pk }}" {% if is_edit and object.stack and object.stack.pk == stack_option.pk %}selected{% elif not is_edit and stack and stack.pk == stack_option.pk %}selected{% endif %}>
+                            {{ stack_option.display_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div style="font-size: 12px; color: #8b9dc3; margin-top: 4px;">Select a stack to organize this content type (optional)</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="id_name">API Name *</label>
+                    <input type="text" name="name" id="id_name" class="form-input" required 
+                           pattern="^[a-zA-Z][a-zA-Z0-9_]*$"
+                           placeholder="e.g., products, blog_posts"
+                           value="{{ form.name.value|default:'' }}"
+                           {% if is_edit %}readonly style="background: #f5f7fa;"{% endif %}
+                           title="Must start with a letter and contain only letters, numbers, and underscores">
+                    <div style="font-size: 12px; color: #8b9dc3; margin-top: 4px;">
+                        {% if is_edit %}API name cannot be changed after creation{% else %}Must start with a letter, only letters, numbers, and underscores{% endif %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="id_display_name">Display Name *</label>
+                    <input type="text" name="display_name" id="id_display_name" class="form-input" required
+                           placeholder="e.g., Products, Blog Posts"
+                           value="{{ form.display_name.value|default:'' }}">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="id_description">Description</label>
+                    <textarea name="description" id="id_description" class="form-input" 
+                              placeholder="Optional description of this content type" style="min-height: 100px; resize: vertical;">{{ form.description.value|default:'' }}</textarea>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 class="section-title" style="margin: 0; border: none; padding: 0;">Fields</h2>
+                </div>
+                <div id="fieldsContainer">
+                    <!-- Fields will be added here dynamically -->
+                </div>
+                <button type="button" class="btn btn-add-field" onclick="addField()">
+                    <i class="fas fa-plus"></i>
+                    Add Field
+                </button>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 32px; padding-top: 32px; border-top: 1px solid #e1e8ed;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-check"></i>
+                    {% if is_edit %}Update Content Type{% else %}Create Content Type{% endif %}
+                </button>
+                <a href="{% if is_edit %}{% url 'table_detail' object.pk %}{% else %}{% url 'table_list' %}{% endif %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i>
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let fieldCount = 0;
+    const fieldTypes = [
+        ['CharField', 'Text'],
+        ['TextField', 'Long Text'],
+        ['IntegerField', 'Integer'],
+        ['FloatField', 'Decimal'],
+        ['BooleanField', 'Boolean'],
+        ['DateField', 'Date'],
+        ['DateTimeField', 'Date & Time'],
+        ['EmailField', 'Email'],
+        ['URLField', 'URL'],
+        ['ImageField', 'Image'],
+        ['FileField', 'File'],
+    ];
+
+    function addField() {
+        fieldCount++;
+        const container = document.getElementById('fieldsContainer');
+        const fieldDiv = document.createElement('div');
+        fieldDiv.className = 'field-item';
+        fieldDiv.id = `field-${fieldCount}`;
+        
+        fieldDiv.innerHTML = `
+            <div class="field-header">
+                <h3>Field #${fieldCount}</h3>
+                <button type="button" class="btn-remove" onclick="removeField(${fieldCount})">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
+            </div>
+            <div class="field-row">
+                <div class="form-group">
+                    <label class="form-label">Field Name *</label>
+                    <input type="text" name="field_name_${fieldCount}" class="form-input" required
+                           pattern="^[a-zA-Z][a-zA-Z0-9_]*$"
+                           placeholder="e.g., title, price">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Display Name *</label>
+                    <input type="text" name="field_display_name_${fieldCount}" class="form-input" required
+                           placeholder="e.g., Title, Price">
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="form-group">
+                    <label class="form-label">Field Type *</label>
+                    <select name="field_type_${fieldCount}" class="form-input" required onchange="toggleMaxLength(${fieldCount})">
+                        ${fieldTypes.map(([value, label]) => 
+                            `<option value="${value}">${label}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+                <div class="form-group" id="max_length_${fieldCount}" style="display: none;">
+                    <label class="form-label">Max Length</label>
+                    <input type="number" name="field_max_length_${fieldCount}" class="form-input"
+                           min="1" placeholder="e.g., 255">
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="form-group">
+                    <label class="form-label">Default Value</label>
+                    <input type="text" name="field_default_${fieldCount}" class="form-input"
+                           placeholder="Optional default value">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Help Text</label>
+                    <input type="text" name="field_help_text_${fieldCount}" class="form-input"
+                           placeholder="Optional help text">
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" name="field_required_${fieldCount}" id="field_required_${fieldCount}">
+                    <label class="form-label" for="field_required_${fieldCount}" style="margin: 0;">Required Field</label>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(fieldDiv);
+    }
+
+    function removeField(id) {
+        const fieldDiv = document.getElementById(`field-${id}`);
+        if (fieldDiv) {
+            fieldDiv.remove();
+        }
+    }
+
+    function toggleMaxLength(fieldId) {
+        const select = document.querySelector(`select[name="field_type_${fieldId}"]`);
+        const maxLengthDiv = document.getElementById(`max_length_${fieldId}`);
+        const textFields = ['CharField', 'EmailField', 'URLField'];
+        if (textFields.includes(select.value)) {
+            maxLengthDiv.style.display = 'block';
+        } else {
+            maxLengthDiv.style.display = 'none';
+        }
+    }
+
+    // Load existing fields if editing
+    {% if is_edit and fields_json %}
+    function loadExistingFields() {
+        const fields = {{ fields_json|safe }};
+        const container = document.getElementById('fieldsContainer');
+        
+        fields.forEach(function(field) {
+            fieldCount++;
+            const fieldDiv = document.createElement('div');
+            fieldDiv.className = 'field-item';
+            fieldDiv.id = `field-${fieldCount}`;
+            
+            // Escape HTML to prevent XSS
+            const escapeHtml = (text) => {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            };
+            
+            const fieldName = escapeHtml(field.name || '');
+            const displayName = escapeHtml(field.display_name || '');
+            const fieldType = escapeHtml(field.field_type || 'CharField');
+            const maxLength = field.max_length || '';
+            const defaultValue = escapeHtml(field.default_value || '');
+            const helpText = escapeHtml(field.help_text || '');
+            const isRequired = field.required ? 'checked' : '';
+            const fieldId = field.id || '';
+            
+            // Build options for field type select
+            const fieldTypeOptions = fieldTypes.map(([value, label]) => {
+                const selected = value === fieldType ? 'selected' : '';
+                return `<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(label)}</option>`;
+            }).join('');
+            
+            // Show max length field if needed
+            const showMaxLength = ['CharField', 'EmailField', 'URLField'].includes(fieldType);
+            const maxLengthDisplay = showMaxLength ? 'block' : 'none';
+            
+            fieldDiv.innerHTML = `
+                <div class="field-header">
+                    <h3>Field #${fieldCount}</h3>
+                    <button type="button" class="btn-remove" onclick="removeField(${fieldCount})">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </div>
+                <div class="field-row">
+                    <div class="form-group">
+                        <label class="form-label">Field Name *</label>
+                        <input type="text" name="field_name_${fieldCount}" class="form-input" required
+                               pattern="^[a-zA-Z][a-zA-Z0-9_]*$"
+                               placeholder="e.g., title, price"
+                               value="${fieldName}">
+                        <input type="hidden" name="field_id_${fieldCount}" value="${fieldId}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Display Name *</label>
+                        <input type="text" name="field_display_name_${fieldCount}" class="form-input" required
+                               placeholder="e.g., Title, Price"
+                               value="${displayName}">
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="form-group">
+                        <label class="form-label">Field Type *</label>
+                        <select name="field_type_${fieldCount}" class="form-input" required onchange="toggleMaxLength(${fieldCount})">
+                            ${fieldTypeOptions}
+                        </select>
+                    </div>
+                    <div class="form-group" id="max_length_${fieldCount}" style="display: ${maxLengthDisplay};">
+                        <label class="form-label">Max Length</label>
+                        <input type="number" name="field_max_length_${fieldCount}" class="form-input"
+                               min="1" placeholder="e.g., 255"
+                               value="${maxLength}">
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="form-group">
+                        <label class="form-label">Default Value</label>
+                        <input type="text" name="field_default_${fieldCount}" class="form-input"
+                               placeholder="Optional default value"
+                               value="${defaultValue}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Help Text</label>
+                        <input type="text" name="field_help_text_${fieldCount}" class="form-input"
+                               placeholder="Optional help text"
+                               value="${helpText}">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" name="field_required_${fieldCount}" id="field_required_${fieldCount}" ${isRequired}>
+                        <label class="form-label" for="field_required_${fieldCount}" style="margin: 0;">Required Field</label>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(fieldDiv);
+            
+            // Toggle max length visibility if needed
+            if (showMaxLength) {
+                toggleMaxLength(fieldCount);
+            }
+        });
+    }
+    {% endif %}
+
+    // Add first field by default (only if not editing)
+    window.onload = function() {
+        {% if is_edit and fields_json %}
+        loadExistingFields();
+        {% else %}
+        addField();
+        {% endif %}
+    };
+
+    // Get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Handle form submission
+    document.getElementById('tableForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Collect field data and send via API
+        const formData = new FormData(this);
+        const tableData = {
+            name: formData.get('name'),
+            display_name: formData.get('display_name'),
+            description: formData.get('description') || '',
+            fields: []
+        };
+
+        // Collect all fields
+        for (let i = 1; i <= fieldCount; i++) {
+            const fieldName = formData.get(`field_name_${i}`);
+            if (fieldName && document.getElementById(`field-${i}`)) {
+                const maxLength = formData.get(`field_max_length_${i}`);
+                const fieldId = formData.get(`field_id_${i}`);
+                const field = {
+                    name: fieldName,
+                    display_name: formData.get(`field_display_name_${i}`),
+                    field_type: formData.get(`field_type_${i}`),
+                    required: formData.has(`field_required_${i}`),
+                    max_length: maxLength ? parseInt(maxLength) : null,
+                    default_value: formData.get(`field_default_${i}`) || null,
+                    help_text: formData.get(`field_help_text_${i}`) || '',
+                    order: i
+                };
+                // Add ID if editing
+                {% if is_edit %}
+                if (fieldId) {
+                    field.id = parseInt(fieldId);
+                }
+                {% endif %}
+                // Remove null values
+                Object.keys(field).forEach(key => {
+                    if (field[key] === null || field[key] === '') {
+                        delete field[key];
+                    }
+                });
+                tableData.fields.push(field);
+            }
+        }
+
+        // Add stack if selected
+        const stackId = formData.get('stack');
+        if (stackId) {
+            tableData.stack = parseInt(stackId);
+        }
+
+        // Submit via fetch to API
+        const csrftoken = getCookie('csrftoken') || formData.get('csrfmiddlewaretoken');
+        const isEdit = {% if is_edit %}true{% else %}false{% endif %};
+        const tableId = {% if is_edit %}{{ object.pk }}{% else %}null{% endif %};
+        const url = isEdit ? `/api/tables/${tableId}/` : '/api/tables/';
+        const method = isEdit ? 'PUT' : 'POST';
+        
+        fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            credentials: 'include',
+            body: JSON.stringify(tableData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => Promise.reject(err));
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.id) {
+                showAlert(
+                    'Success',
+                    isEdit ? 'Content type updated successfully!' : 'Content type created successfully!',
+                    'success'
+                );
+                setTimeout(() => {
+                    window.location.href = `/tables/${data.id}/`;
+                }, 1500);
+            } else {
+                const errorMsg = typeof data === 'string' ? data : JSON.stringify(data);
+                showAlert(
+                    'Error',
+                    `Error ${isEdit ? 'updating' : 'creating'} content type: ` + errorMsg,
+                    'error'
+                );
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            const errorMsg = error.detail || error.message || JSON.stringify(error);
+            showAlert(
+                'Error',
+                `Error ${isEdit ? 'updating' : 'creating'} content type: ` + errorMsg,
+                'error'
+            );
+        });
+    });
+</script>
+{% endblock %}
